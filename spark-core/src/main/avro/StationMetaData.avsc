@@ -1,0 +1,16 @@
+{"namespace": "com.my.rdd",
+ "type": "record",
+ "name": "StationMetaData",
+ "fields": [
+     {"name": "stationId", "type": "string"},
+     {"name": "stationName",  "type": "string"},
+     {"name": "stationCity",  "type": "string"},
+     {"name": "stationState",  "type": "string"},
+     {"name": "stationICAO",  "type": "string"},
+     {"name": "stationLatitude",  "type": "string"},
+     {"name": "stationLongitude",  "type": "string"},
+     {"name": "stationElev",  "type": "string"},
+     {"name": "stationBeginTime",  "type": "string"},
+     {"name": "stationEndTime",  "type": "string"}
+ ]
+}
