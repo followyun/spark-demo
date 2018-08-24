@@ -2,8 +2,8 @@ package com.my.spark.sql.dataframe
 
 import com.my.spark.sql.Dog
 import my.spark.sql.bean.Cat
-import org.apache.spark.sql.types.{StringType, StructField, StructType, IntegerType}
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 /**
   *创建dataframe:
   *从RDD[A <: Product]中创建
@@ -67,5 +67,6 @@ object DataFrameCreate {
     //val fileDogDF = spark.read.json(s"data/sql/te.json")
     val fileDogDF = spark.read.json(s"hdfs://master:9999/user/bd-cqr/person.json")
     fileDogDF.show()
+
   }
 }
