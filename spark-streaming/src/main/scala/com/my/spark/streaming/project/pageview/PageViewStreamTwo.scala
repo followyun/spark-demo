@@ -1,6 +1,5 @@
 package com.my.spark.streaming.project.pageview
 
-import com.my.spark.streaming.util.RedisClient
 import kafka.serializer.StringDecoder
 import org.apache.spark.streaming.kafka.KafkaUtils
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -25,21 +24,21 @@ import org.apache.spark.{SparkConf, SparkContext}
   *
   * 3. 启动kafka
   * nohup bin/kafka-server-start.sh config/server.properties >~/bigdata/kafka_2.11-1.0.0/logs/server.log 2>&1 &
-  *创建topic pageview
+  * 创建topic pageview
   * bin/kafka-topics.sh --create --zookeeper master:2181 --replication-factor 3 --partitions 1 --topic pageview
   * 4. 启动flume
   * bin/flume-ng agent --conf conf --conf-file conf/flume-conf_pageview.properties --name agent1
   *5. 提交streaming应用
-  *spark-submit \
-  --class com.my.spark.streaming.project.pageview.PageViewStreamTwo \
-  --master spark://master:7077 \
-  --deploy-mode client \
-  --driver-memory 512m \
-  --executor-memory 512m \
-  --total-executor-cores 4 \
-  --executor-cores 2 \
-  ~/mr-course/spark-streaming-1.0-SNAPSHOT-jar-with-dependencies.jar \
-  master:9092,slave1:9092,slave2:9092 pageview
+  * spark-submit \
+  * --class com.my.spark.streaming.project.pageview.PageViewStreamTwo \
+  * --master spark://master:7077 \
+  * --deploy-mode client \
+  * --driver-memory 512m \
+  * --executor-memory 512m \
+  * --total-executor-cores 4 \
+  * --executor-cores 2 \
+  * ~/mr-course/spark-streaming-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  * master:9092,slave1:9092,slave2:9092 pageview
   */
 object PageViewStreamTwo {
   def main(args: Array[String]): Unit = {
@@ -53,22 +52,43 @@ object PageViewStreamTwo {
     val topicSet = topics.split(",").toSet
     val receiveDS = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParam, topicSet)
     //每隔5秒统计前30秒用户访问量
-    val pageViewDS = receiveDS.map(pvStr => {val parts = pvStr._2.split(" ")
-      new PageView(parts(0), parts(1).toInt, parts(2).toInt, parts(3).toInt)})
-    val activeUserCount = pageViewDS.window(Seconds(30), Seconds(5)).map(pv => (pv.userID, 1)).groupByKey().count()
+    val pageViewDS = receiveDS.map(pvStr => {
+      val parts = pvStr._2.split(" ")
+      new PageView(parts(0), parts(1).toInt, parts(2).toInt, parts(3).toInt)
+    })
+    //    val activeUserCount = pageViewDS.window(Seconds(30), Seconds(5)).map(pv => (pv.userID, 1)).groupByKey().count()
+    //每隔3秒统计前50秒每一个url的访问错误数
+    val errorAccessCount = pageViewDS.window(Seconds(50), Seconds(3)).map(pv => {
+      println("------pv = " + pv)
+      val normalCode = 200
+      var errorCount = 0
+      if (pv.status != normalCode)
+        errorCount = 1
+      (pv.url, errorCount)
+    }).reduceByKey(_ + _)
+
+    errorAccessCount.print()
+
+    //每隔2秒统计前15秒有多少个用户访问了url: http://foo.com/
+    val theUrlAccessCount = pageViewDS.window(Seconds(15), Seconds(2)).filter(pv => {
+      val theUrl = "http://foo.com/"
+      pv.url.equals(theUrl)
+    }).map(pv => (pv.userID, 1)).groupByKey().count()
+
+    theUrlAccessCount.print()
 
     //保存统计结果到redis
-    activeUserCount.foreachRDD {
-      rdd =>
-        rdd.foreachPartition {
-          partitionRecords =>
-            val jedis = RedisClient.getPool.getResource
-            partitionRecords.foreach {
-              count => jedis.set("active_user_count", count.toString)
-            }
-            RedisClient.getPool.returnResource(jedis)
-        }
-    }
+    //    activeUserCount.foreachRDD {
+    //      rdd =>
+    //        rdd.foreachPartition {
+    //          partitionRecords =>
+    //            val jedis = RedisClient.getPool.getResource
+    //            partitionRecords.foreach {
+    //              count => jedis.set("active_user_count", count.toString)
+    //            }
+    //            RedisClient.getPool.returnResource(jedis)
+    //        }
+    //    }
 
     ssc.start()
     ssc.awaitTermination()
