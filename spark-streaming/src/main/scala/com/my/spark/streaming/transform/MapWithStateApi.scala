@@ -42,6 +42,7 @@ object MapWithStateApi {
     }).initialState(initialRDD).numPartitions(2).timeout(Seconds(30))
         val wordsCount = wordsPairs.mapWithState(stateSpec)
         wordsCount.print()
+    //wordCount.stateSnapshots().print() //状态没有更新的key也可以打印出来
 
 
 
